@@ -1,9 +1,35 @@
-import React, {Component} from 'react'
+import React from "react";
+import FloatingActionButton from 'material-ui/FloatingActionButton';
+import ContentAdd from 'material-ui/svg-icons/content/add';
+import TextField from 'material-ui/TextField';
 
-export default class extends Component {
-  render() {
-    return <div>
-      <h2>Welcome to React components</h2>
+export const AddHeadingView = ({ addHeading }) => {
+  let nodeInput;
+
+  return (
+    <div>
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          if (!nodeInput.input.value.trim()) {
+            return;
+          }
+          addHeading(nodeInput.input.value);
+          nodeInput.input.value = "";
+        }}
+      >
+        <TextField
+          name="text-field-controlled"
+          ref={node => {
+            nodeInput = node;
+          }}
+        />
+        <FloatingActionButton type="submit" mini={true}>
+          <ContentAdd />
+        </FloatingActionButton>
+      </form>
     </div>
-  }
-}
+  );
+};
+
+export default AddHeadingView;
