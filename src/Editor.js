@@ -1,5 +1,5 @@
-﻿import { OptionPicker } from './EditorFields.jsx';
-const React = require('react');
+﻿import { OptionPicker } from './EditorFields';
+import React, { Component } from 'react';
 
 /*
 
@@ -26,22 +26,61 @@ const renderOptionPicker = (value, prop) => {
     );
 }
 
+/* 
 <Editor renderers={[]}>
     <Field name="field1" type="text" label="Field1" help="" validators={[]} />
     <Field />
     <Field />
     <Action />
-</Editor>
-
-
+</Editor> 
+*/
 
 class Editor extends React.Component {
     constructor(props) {
         this.state = buildStateFromProps(props);
     }
+
+    static buildStateFromProps(inputProps, state = {}) {
+        return inputProps
+            .fields
+            .reduce((acc, cur) => {
+                let fieldState = state[cur.name] || {};
+                acc[cur.name] = { value: fieldState.value || cur.defaultValue, errors: [] };
+                return acc;
+            }, {});
+    }
+
+    static runValidatorsFor(name, value) {
+        return this.props
+            .fields
+            .find(f => f.name === name)
+            .validators
+            .map(vtor => vtor(value))
+            .reduce((a, b) => a.concat(b), []);
+    }
+
+    static buildFormDataFromState(state) {
+        let data = {};
+
+        Object.entries(state).forEach((entry, i) => {
+            data[entry[0]] = entry[1].value;
+        });
+
+        return data;
+    }
+
+    static buildFormErrorsFromState(state) {
+        let data = {};
+
+        Object.entries(state).forEach((entry, i) => {
+            data[entry[0]] = entry[1].errors;
+        });
+
+        return data;
+    }
+
     getDefaultProps() {
         return {
-            propsCanResetState: false,
             fields: [
                 {
                     name: "field1",
@@ -59,7 +98,7 @@ class Editor extends React.Component {
                                     <p className="help-block" key={i}>{e}</p>
                                 ))}
                                 {!!meta.helpMessage &&
-                                    <span title={`${metadata.label} - help`} message={meta.helpMessage} />}
+                                    <span title={`${meta.label} - help`} message={meta.helpMessage} />}
                             </div>
                         );
                     }
@@ -67,19 +106,11 @@ class Editor extends React.Component {
             ]
         };
     }
-    buildStateFromProps(inputProps) {
-        return inputProps
-            .metadata
-            .reduce((acc, cur) => {
-                acc[cur.name] = { value: cur.value, errors: [] };
-                return acc;
-            }, {});
-    }
+
     componentWillReceiveProps(nextProps) {
-        if (this.props.propsCanResetState) {
-            this.setState(this.buildStateFromProps(nextProps));
-        }
+        this.setState(state => this.buildStateFromProps(nextProps, state));
     }
+
     handleChangeFor(name, value) {
         this.setState(oldState => {
             let fieldState = oldState[name];
@@ -92,44 +123,33 @@ class Editor extends React.Component {
             return { ...oldState, [name]: val };
         });
     }
-    runValidatorsFor(name, value) {
-        return [];
-    }
-
-    buildFormDataFromState() {
-        let data = {};
-
-        Object.keys(this.state).map((r, i) => {
-            data[r] = this.state[r].value;
-        });
-
-        return data;
-    }
 
     handleSubmit(e) {
         e.preventDefault();
+        let state = this.state;
+        let errors = this.buildFormErrorsFromState(state)
         if (!errors) {
-            let data = this.buildFormDataFromState();
-
+            let data = this.buildFormDataFromState(state);
             this.props.onSubmit(data, this.renderUpstreamErrors);
         }
     }
 
     renderUpstreamErrors(errorObject) {
-        let newState = {};
+        this.setState(state => {
+            let newState = {};
 
-        Object.keys(this.state).forEach(name => {
-            let value = this.state[name].value;
-            let errors = errorObject[name] || [];
+            Object.entries(state).forEach(([name, value]) => {
+                let errors = errorObject[name] || [];
 
-            newState[name] = { value, errors };
+                newState[name] = { value, errors };
+            });
+
+            return newState;
         });
-
-        this.setState(newState);
     }
 
     renderField(name, value, errors, index) {
-        let meta = this.props.metadata.find(i => i.name === name);
+        let meta = this.props.fields.find(i => i.name === name);
 
         let handleChange = newValue => this.handleChangeFor(name, newValue);
         let validate = () => this.handleChangeFor(name, value);
