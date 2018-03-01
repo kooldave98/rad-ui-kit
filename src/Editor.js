@@ -12,27 +12,61 @@ let requiredValidator = v => !v ? ["This is required"] : [];
 
 */
 
-const Editor = React.createClass({
+const renderOptionPicker = (value, prop) => {
+    return (
+        <OptionPicker
+            autoComplete="nope"
+            name={prop.name}
+            id={prop.name}
+            placeholder={prop.label}
+            value={value || ""}
+            onChange={handleChange}
+            options={prop.options}
+        />
+    );
+}
+
+<Editor renderers={[]}>
+    <Field name="field1" type="text" label="Field1" help="" validators={[]} />
+    <Field />
+    <Field />
+    <Action />
+</Editor>
+
+
+
+class Editor extends React.Component {
+    constructor(props) {
+        this.state = buildStateFromProps(props);
+    }
     getDefaultProps() {
         return {
-            submitOnEnter: false,
-            submitButtonText: "Save",
-            submitButtonAsBlock: false,
-            showLabelAsPlaceholder: false,
             propsCanResetState: false,
-            metadata: [
+            fields: [
                 {
                     name: "field1",
-                    value: "",
-                    dataType: 'text',
+                    defaultValue: "",
                     label: "Field1",
                     helpMessage: "This should be a short message that helps the user",
                     validators: [],
-                    options: { "option1": "123", "option2": "456" }
+                    options: { "option1": "123", "option2": "456" },
+                    render: ({ meta, value, errors, handleChange, validate }) => {
+                        return (
+                            <div>
+                                <label>{meta.label}</label>
+                                <input onChange={e => handleChange(e.target.value)} />
+                                {errors.map((e, i) => (
+                                    <p className="help-block" key={i}>{e}</p>
+                                ))}
+                                {!!meta.helpMessage &&
+                                    <span title={`${metadata.label} - help`} message={meta.helpMessage} />}
+                            </div>
+                        );
+                    }
                 }
-            ],
+            ]
         };
-    },
+    }
     buildStateFromProps(inputProps) {
         return inputProps
             .metadata
@@ -40,55 +74,28 @@ const Editor = React.createClass({
                 acc[cur.name] = { value: cur.value, errors: [] };
                 return acc;
             }, {});
-    },
-    getInitialState() {
-        this.otherState = {};
-
-        return this.buildStateFromProps(this.props);
-    },
+    }
     componentWillReceiveProps(nextProps) {
         if (this.props.propsCanResetState) {
             this.setState(this.buildStateFromProps(nextProps));
         }
-    },
-    handleChange(e) {
-        let fieldState = this.state[e.target.name];
+    }
+    handleChangeFor(name, value) {
+        this.setState(oldState => {
+            let fieldState = oldState[name];
 
-        let val = {
-            value: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
-            errors: fieldState.errors
-        };
+            let val = {
+                value,
+                errors: [...fieldState.errors, this.runValidatorsFor(name, value)]
+            };
 
-        let newState = { [e.target.name]: val };
-
-        this.setState(newState);
-    },
-    handleFileChange(e) {
-        if (e.target.files && e.target.files[0]) {
-            this.otherState[e.target.name] = e.target.files[0];
-        }
-    },
-    validate(onValid, onInvalid) {
-        let newState = {};
-
-        let errors =
-            this.props.metadata.map(i => {
-                let value = this.state[i.name].value;
-                let errors = i.validators.map(v => v(value)).flatMap(i => i);
-
-                newState[i.name] = { value, errors };
-
-                return errors;
-            });
-
-        this.setState(newState, o => {
-            if (errors.flatMap(i => i).length > 0) {
-                onInvalid();
-            } else {
-                onValid();
-            }
+            return { ...oldState, [name]: val };
         });
-    },
+    }
+    runValidatorsFor(name, value) {
+        return [];
+    }
+
     buildFormDataFromState() {
         let data = {};
 
@@ -97,20 +104,17 @@ const Editor = React.createClass({
         });
 
         return data;
-    },
-    handleSubmit(onFormIsValidExternalHook, onFormIsInValidExternalHook) {
-        this.validate(s => {
+    }
+
+    handleSubmit(e) {
+        e.preventDefault();
+        if (!errors) {
             let data = this.buildFormDataFromState();
 
-            onFormIsValidExternalHook && onFormIsValidExternalHook();
+            this.props.onSubmit(data, this.renderUpstreamErrors);
+        }
+    }
 
-            let mergedData = Object.assign(data, this.otherState);
-
-            this.props.onSubmit(mergedData, this.renderUpstreamErrors);
-        }, e => {
-            onFormIsInValidExternalHook && onFormIsInValidExternalHook();
-        });
-    },
     renderUpstreamErrors(errorObject) {
         let newState = {};
 
@@ -122,132 +126,39 @@ const Editor = React.createClass({
         });
 
         this.setState(newState);
-    },
-    renderTextArea(value, prop) {
-        let attributes = {
-            type: prop.dataType,
-            name: prop.name,
-            id: prop.name,
-            className: "form-control",
-            onChange: this.handleChange,
-            rows: 3,
-            value: value || ""
-        };
+    }
 
-        if (this.props.showLabelAsPlaceholder) {
-            attributes.placeholder = prop.label;
+    renderField(name, value, errors, index) {
+        let meta = this.props.metadata.find(i => i.name === name);
+
+        let handleChange = newValue => this.handleChangeFor(name, newValue);
+        let validate = () => this.handleChangeFor(name, value);
+
+        if (meta.render) {
+            return meta.render({ meta, value, errors, handleChange, validate });
         }
 
         return (
-            <textarea autoComplete="nope" {...attributes} />
+            <input
+                type='text'
+                name={name}
+                id={name}
+                onChange={e => handleChange(e.target.value)}
+                placeholder={name}
+                value={value || ""} />
         );
-    },
-    renderInput(value, prop) {
-        let attributes = {
-            type: prop.dataType,
-            name: prop.name,
-            id: prop.name,
-            className: "form-control",
-            onChange: this.handleChange,
-        };
-
-        attributes.value = value || "";
-
-        if (this.props.showLabelAsPlaceholder) {
-            attributes.placeholder = prop.label;
-        }
-
-
-
-        return (
-            <input autoComplete="nope" {...attributes} />
-        );
-    },
-    renderStaticText(value, prop) {
-        return (
-            <p className="form-control-static">{value}</p>
-        );
-    },
-    renderOptionPicker(value, prop) {
-        return (
-            <OptionPicker
-                autoComplete="nope"
-                name={prop.name}
-                id={prop.name}
-                className="form-control"
-                placeholder={this.props.showLabelAsPlaceholder ? prop.label : "--"}
-                value={value || ""}
-                onChange={this.handleChange}
-                options={prop.options}
-            />
-        );
-    },
-    determineElement(value, metadata) {
-        if (metadata.dataType === "select") {
-            return this.renderOptionPicker(value, metadata);
-        }
-
-        if (metadata.dataType === "static-text") {
-            return this.renderStaticText(value, metadata);
-        }
-
-        if (metadata.dataType === "large-text") {
-            return this.renderTextArea(value, metadata);
-        }
-
-        return this.renderInput(value, metadata);
-    },
-    mapField(name, value, errors, key) {
-        let metadata = this.props.metadata.find(i => i.name === name);
-
-        if (metadata.dataType === 'checkbox') {
-            return (
-                <div key={key} className="checkbox">
-                    <label>
-                        <input
-                            name={metadata.name}
-                            type="checkbox"
-                            id={metadata.name}
-                            checked={value}
-                            onChange={this.handleChange}
-                        />
-                        {metadata.label}
-                    </label>
-                    {!!metadata.helpMessage &&
-                        <span title={`${metadata.label} - help`} message={metadata.helpMessage} />}
-                </div>
-            );
-        }
-
-        return (
-            <div key={key} className={"form-group " + (errors.length > 0 ? "has-error" : "")}>
-                {this.props.showLabelAsPlaceholder ? null :
-                    <label htmlFor={metadata.name}>{metadata.label}</label>}
-                {!!metadata.helpMessage &&
-                    <span title={`${metadata.label} - help`} message={metadata.helpMessage} />}
-                {errors.map((e, i) => (
-                    <p className="help-block" key={i}>{e}</p>
-                ))}
-                {this.determineElement(value, metadata)}
-            </div>
-        );
-    },
+    }
     render() {
         return (
-            <form autoComplete="off" style={this.props.style} className={this.props.className} onSubmit={e => { e.preventDefault(); this.handleSubmit(); }} role="form">
-                {
-                    Object.keys(this.state).map((r, i) => {
-                        let val = this.state[r];
-                        return this.mapField(r, val.value, val.errors, i);
-                    })
-                }
-                <div className="form-group">
-                    {this.props.children}
-                </div>
-                <button type="submit" className={`btn btn-primary ${this.props.submitButtonAsBlock ? "btn-block" : null}`}>{this.props.submitButtonText}</button>
+            <form onSubmit={this.handleSubmit}>
+                {Object.entries(this.state).map((entry, i) => {
+                    let val = entry[1];
+                    return this.renderField(entry[0], val.value, val.errors, i);
+                })}
+                <button type="submit">Submit</button>
             </form>
         );
     }
-});
+}
 
 module.exports = { Editor };
