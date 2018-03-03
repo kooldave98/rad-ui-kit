@@ -35,80 +35,53 @@ const renderOptionPicker = (value, prop) => {
 </Editor> 
 */
 
-class Editor extends React.Component {
+let buildStateFromProps = (inputProps, state = {}) => {
+    return inputProps
+        .fields
+        .reduce((acc, cur) => {
+            let fieldState = state[cur.name] || {};
+            acc[cur.name] = { value: fieldState.value || cur.defaultValue, errors: [] };
+            return acc;
+        }, {});
+}
+
+let runValidatorsFor = (name, value, props) => {
+    return props
+        .fields
+        .find(f => f.name === name)
+        .validators
+        .map(vtor => vtor(value))
+        .reduce((a, b) => a.concat(b), []);
+}
+
+let buildFormDataFromState = (state) => {
+    let data = {};
+
+    Object.entries(state).forEach((entry, i) => {
+        data[entry[0]] = entry[1].value;
+    });
+
+    return data;
+}
+
+let buildFormErrorsFromState = (state) => {
+    let data = {};
+
+    Object.entries(state).forEach((entry, i) => {
+        data[entry[0]] = entry[1].errors;
+    });
+
+    return data;
+}
+
+export class Editor extends Component {
     constructor(props) {
+        super(props);
         this.state = buildStateFromProps(props);
     }
 
-    static buildStateFromProps(inputProps, state = {}) {
-        return inputProps
-            .fields
-            .reduce((acc, cur) => {
-                let fieldState = state[cur.name] || {};
-                acc[cur.name] = { value: fieldState.value || cur.defaultValue, errors: [] };
-                return acc;
-            }, {});
-    }
-
-    static runValidatorsFor(name, value) {
-        return this.props
-            .fields
-            .find(f => f.name === name)
-            .validators
-            .map(vtor => vtor(value))
-            .reduce((a, b) => a.concat(b), []);
-    }
-
-    static buildFormDataFromState(state) {
-        let data = {};
-
-        Object.entries(state).forEach((entry, i) => {
-            data[entry[0]] = entry[1].value;
-        });
-
-        return data;
-    }
-
-    static buildFormErrorsFromState(state) {
-        let data = {};
-
-        Object.entries(state).forEach((entry, i) => {
-            data[entry[0]] = entry[1].errors;
-        });
-
-        return data;
-    }
-
-    getDefaultProps() {
-        return {
-            fields: [
-                {
-                    name: "field1",
-                    defaultValue: "",
-                    label: "Field1",
-                    helpMessage: "This should be a short message that helps the user",
-                    validators: [],
-                    options: { "option1": "123", "option2": "456" },
-                    render: ({ meta, value, errors, handleChange, validate }) => {
-                        return (
-                            <div>
-                                <label>{meta.label}</label>
-                                <input onChange={e => handleChange(e.target.value)} />
-                                {errors.map((e, i) => (
-                                    <p className="help-block" key={i}>{e}</p>
-                                ))}
-                                {!!meta.helpMessage &&
-                                    <span title={`${meta.label} - help`} message={meta.helpMessage} />}
-                            </div>
-                        );
-                    }
-                }
-            ]
-        };
-    }
-
     componentWillReceiveProps(nextProps) {
-        this.setState(state => this.buildStateFromProps(nextProps, state));
+        this.setState(state => buildStateFromProps(nextProps, state));
     }
 
     handleChangeFor(name, value) {
@@ -117,7 +90,7 @@ class Editor extends React.Component {
 
             let val = {
                 value,
-                errors: [...fieldState.errors, this.runValidatorsFor(name, value)]
+                errors: [...fieldState.errors, runValidatorsFor(name, value, this.props)]
             };
 
             return { ...oldState, [name]: val };
@@ -127,9 +100,11 @@ class Editor extends React.Component {
     handleSubmit(e) {
         e.preventDefault();
         let state = this.state;
-        let errors = this.buildFormErrorsFromState(state)
-        if (!errors) {
-            let data = this.buildFormDataFromState(state);
+        let errors = buildFormErrorsFromState(state);
+        console.log(state);
+        console.log(errors);
+        if (errors.length === 0) {
+            let data = buildFormDataFromState(state);
             this.props.onSubmit(data, this.renderUpstreamErrors);
         }
     }
@@ -148,18 +123,19 @@ class Editor extends React.Component {
         });
     }
 
-    renderField(name, value, errors, index) {
+    renderField(name, value, errors, key) {
         let meta = this.props.fields.find(i => i.name === name);
 
         let handleChange = newValue => this.handleChangeFor(name, newValue);
         let validate = () => this.handleChangeFor(name, value);
 
         if (meta.render) {
-            return meta.render({ meta, value, errors, handleChange, validate });
+            return meta.render({ meta, value, errors, handleChange, validate, key });
         }
 
         return (
             <input
+                key={key}
                 type='text'
                 name={name}
                 id={name}
@@ -170,7 +146,7 @@ class Editor extends React.Component {
     }
     render() {
         return (
-            <form onSubmit={this.handleSubmit}>
+            <form onSubmit={e => this.handleSubmit(e)}>
                 {Object.entries(this.state).map((entry, i) => {
                     let val = entry[1];
                     return this.renderField(entry[0], val.value, val.errors, i);
@@ -179,6 +155,30 @@ class Editor extends React.Component {
             </form>
         );
     }
-}
+};
 
-module.exports = { Editor };
+Editor.defaultProps = {
+    fields: [
+        {
+            name: "field1",
+            defaultValue: "",
+            label: "Field1",
+            helpMessage: "This should be a short message that helps the user",
+            validators: [],
+            options: { "option1": "123", "option2": "456" },
+            render: ({ meta, value, errors, handleChange, validate, key }) => {
+                return (
+                    <div key={key}>
+                        <label>{meta.label}</label>
+                        <input onChange={e => handleChange(e.target.value)} />
+                        {errors.map((e, i) => (
+                            <p className="help-block" key={i}>{e}</p>
+                        ))}
+                        {!!meta.helpMessage &&
+                            <span title={`${meta.label} - help`} message={meta.helpMessage} />}
+                    </div>
+                );
+            }
+        }
+    ]
+};
