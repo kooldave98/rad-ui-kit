@@ -54,24 +54,16 @@ let runValidatorsFor = (name, value, props) => {
         .reduce((a, b) => a.concat(b), []);
 }
 
-let buildFormDataFromState = (state) => {
+let buildFormData = (state) => {
     let data = {};
+    let allErrors = [];
 
     Object.entries(state).forEach((entry, i) => {
         data[entry[0]] = entry[1].value;
+        allErrors = [...allErrors, ...entry[1].errors];
     });
 
-    return data;
-}
-
-let buildFormErrorsFromState = (state) => {
-    let data = {};
-
-    Object.entries(state).forEach((entry, i) => {
-        data[entry[0]] = entry[1].errors;
-    });
-
-    return data;
+    return { data, allErrors };
 }
 
 export class Editor extends Component {
@@ -90,33 +82,51 @@ export class Editor extends Component {
 
             let val = {
                 value,
-                errors: [...fieldState.errors, runValidatorsFor(name, value, this.props)]
+                errors: [...runValidatorsFor(name, value, this.props)]
             };
 
             return { ...oldState, [name]: val };
         });
     }
 
+    runAllValidators(onComplete) {
+        this.setState(oldState => {
+            let newState = {};
+
+            this.props.fields.forEach(i => {
+                let fieldState = oldState[i.name];
+
+                let val = {
+                    value: fieldState.value,
+                    errors: [...runValidatorsFor(i.name, fieldState.value, this.props)]
+                };
+
+                newState[i.name] = val;
+            });
+
+            return newState;
+        }, onComplete);
+    }
+
     handleSubmit(e) {
         e.preventDefault();
-        let state = this.state;
-        let errors = buildFormErrorsFromState(state);
-        console.log(state);
-        console.log(errors);
-        if (errors.length === 0) {
-            let data = buildFormDataFromState(state);
-            this.props.onSubmit(data, this.renderUpstreamErrors);
-        }
+
+        this.runAllValidators(() => {
+            let formData = buildFormData(this.state);
+            if (formData.allErrors.length === 0) {
+                this.props.onSubmit(formData.data, this.renderUpstreamErrors.bind(this));
+            }
+        });
     }
 
     renderUpstreamErrors(errorObject) {
         this.setState(state => {
             let newState = {};
 
-            Object.entries(state).forEach(([name, value]) => {
-                let errors = errorObject[name] || [];
+            Object.entries(state).forEach(entry => {
+                let errors = errorObject[entry[0]] || [];
 
-                newState[name] = { value, errors };
+                newState[entry[0]] = { value: entry[1].value, errors: [...entry[1].errors, ...errors] };
             });
 
             return newState;
@@ -172,7 +182,7 @@ Editor.defaultProps = {
                         <label>{meta.label}</label>
                         <input onChange={e => handleChange(e.target.value)} />
                         {errors.map((e, i) => (
-                            <p className="help-block" key={i}>{e}</p>
+                            <p key={i}>{e}</p>
                         ))}
                         {!!meta.helpMessage &&
                             <span title={`${meta.label} - help`} message={meta.helpMessage} />}
