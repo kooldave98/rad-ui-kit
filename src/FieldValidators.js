@@ -1,4 +1,7 @@
-﻿let MinimumNCharacters = (v, n) => {
+﻿//validator interface
+//value => array<string> 
+
+let MinimumNCharacters = (v, n) => {
     return v => v.length < n ? [`Field is less than ${n} characters`] : [];
 };
 

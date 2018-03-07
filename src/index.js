@@ -1,2 +1,2 @@
 export { Editor } from './Editor';
-export { FieldValidators } from './FieldValidators';
+export { Required, Minimum5Characters } from './FieldValidators';

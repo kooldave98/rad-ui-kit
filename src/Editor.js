@@ -154,6 +154,7 @@ export class Editor extends Component {
                 value={value || ""} />
         );
     }
+
     render() {
         return (
             <form onSubmit={e => this.handleSubmit(e)}>
@@ -161,7 +162,7 @@ export class Editor extends Component {
                     let val = entry[1];
                     return this.renderField(entry[0], val.value, val.errors, i);
                 })}
-                <button type="submit">Submit</button>
+                {this.props.actions.map((EditorAction, index) => <EditorAction key={index} />)}
             </form>
         );
     }
@@ -176,19 +177,21 @@ Editor.defaultProps = {
             helpMessage: "This should be a short message that helps the user",
             validators: [],
             options: { "option1": "123", "option2": "456" },
-            render: ({ meta, value, errors, handleChange, validate, key }) => {
-                return (
-                    <div key={key}>
-                        <label>{meta.label}</label>
-                        <input onChange={e => handleChange(e.target.value)} />
-                        {errors.map((e, i) => (
-                            <p key={i}>{e}</p>
-                        ))}
-                        {!!meta.helpMessage &&
-                            <span title={`${meta.label} - help`} message={meta.helpMessage} />}
-                    </div>
-                );
-            }
+            render: ({ meta, value, errors, handleChange, validate, key }) => (
+                <div key={key}>
+                    <label>{meta.label}</label>
+                    <input onChange={e => handleChange(e.target.value)} />
+                    {errors.map((e, i) => (
+                        <p key={i}>{e}</p>
+                    ))}
+                    {!!meta.helpMessage &&
+                        <span title={`${meta.label} - help`} message={meta.helpMessage} />}
+                </div>
+            )
+
         }
+    ],
+    actions: [
+        () => (<button type="submit">Submit</button>)
     ]
 };

@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import { render } from 'react-dom';
 
-import { Editor } from '../../src';
-import { FieldValidators } from '../../src';
+import { Editor, Required, Minimum5Characters } from '../../src';
 
 let standardInputField = ({ meta, value, errors, handleChange, validate, key }) => {
   return (
@@ -24,7 +23,7 @@ let fields = [
     defaultValue: "",
     label: "First Name",
     helpMessage: "Please enter your first name here",
-    validators: [FieldValidators.Required],
+    validators: [Required],
     options: { "option1": "123", "option2": "456" },
     render: standardInputField
   },
@@ -33,10 +32,14 @@ let fields = [
     defaultValue: "",
     label: "Last Name",
     helpMessage: "Please enter your surname here",
-    validators: [FieldValidators.Required],
+    validators: [Required],
     options: { "option1": "123", "option2": "456" },
     render: standardInputField
   }
+];
+
+let actions = [
+  () => (<button type="submit">Submittt</button>)
 ];
 
 let onSubmit = (data, handleServerErrors) => {
@@ -48,7 +51,7 @@ class Demo extends Component {
   render() {
     return <div>
       <h4>rad-ui-kit-editor</h4>
-      <Editor onSubmit={onSubmit} fields={fields} />
+      <Editor onSubmit={onSubmit} fields={fields} actions={actions} />
     </div>
   }
 }
