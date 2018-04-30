@@ -171,7 +171,8 @@ export var Editor = function (_Component) {
         };
 
         if (meta.render) {
-            return meta.render({ meta: meta, value: value, errors: errors, handleChange: handleChange, validate: validate, key: key });
+            var props = { meta: meta, value: value, errors: errors, handleChange: handleChange, validate: validate, key: key };
+            return React.createElement(meta.render, props);
         }
 
         return React.createElement('input', {
@@ -220,11 +221,10 @@ Editor.defaultProps = {
                 value = _ref.value,
                 errors = _ref.errors,
                 handleChange = _ref.handleChange,
-                validate = _ref.validate,
-                key = _ref.key;
+                validate = _ref.validate;
             return React.createElement(
                 'div',
-                { key: key },
+                null,
                 React.createElement(
                     'label',
                     null,

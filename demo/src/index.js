@@ -3,9 +3,9 @@ import { render } from 'react-dom';
 
 import { Editor, Required, Minimum5Characters } from '../../src';
 
-let standardInputField = ({ meta, value, errors, handleChange, validate, key }) => {
+let standardInputField = ({ meta, value, errors, handleChange, validate }) => {
   return (
-    <div key={key}>
+    <div>
       <label>{meta.label}</label>
       <input onChange={e => handleChange(e.target.value)} />
       {!!meta.helpMessage &&

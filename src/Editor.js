@@ -140,7 +140,8 @@ export class Editor extends Component {
         let validate = () => this.handleChangeFor(name, value);
 
         if (meta.render) {
-            return meta.render({ meta, value, errors, handleChange, validate, key });
+            var props = { meta, value, errors, handleChange, validate, key };
+            return <meta.render {...props} />;
         }
 
         return (
@@ -177,8 +178,8 @@ Editor.defaultProps = {
             helpMessage: "This should be a short message that helps the user",
             validators: [],
             options: { "option1": "123", "option2": "456" },
-            render: ({ meta, value, errors, handleChange, validate, key }) => (
-                <div key={key}>
+            render: ({ meta, value, errors, handleChange, validate }) => (
+                <div>
                     <label>{meta.label}</label>
                     <input onChange={e => handleChange(e.target.value)} />
                     {errors.map((e, i) => (
